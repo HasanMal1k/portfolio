@@ -46,6 +46,7 @@ function armHover(px: HTMLElement | null) {
   })
 }
 
+/** Plays the opening; resolves once the name and the small print are all in. */
 export async function playIntro(o: { ascii: Ascii | null; video: HTMLVideoElement; reduced: boolean; instant: boolean }) {
   const head = document.querySelector<HTMLElement>('.headline')
   if (!head) return
@@ -88,4 +89,5 @@ export async function playIntro(o: { ascii: Ascii | null; video: HTMLVideoElemen
     .fromTo(corners, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'power2.out', stagger: 0.08, clearProps: 'transform' }, last + 0.9)
 
   if (import.meta.env.DEV) Object.assign(window, { __intro: { tl } })
+  await tl.then(() => {})
 }

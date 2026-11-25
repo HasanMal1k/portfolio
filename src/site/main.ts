@@ -13,6 +13,7 @@ const $ = <T extends Element>(s: string) => document.querySelector<T>(s)
 const $$ = <T extends Element>(s: string) => [...document.querySelectorAll<T>(s)]
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 const video = $<HTMLVideoElement>('video.src')!
 const canvas = $<HTMLCanvasElement>('canvas.ascii')!
 
@@ -41,13 +42,14 @@ if (!ascii) document.documentElement.classList.add('no-gl')
 const html = document.documentElement
 const gate = $<HTMLButtonElement>('.gate')
 let entered = false
+let introDone = Promise.resolve()
 function enter(at: { x: number; y: number } | null, instant = false) {
   if (entered) return
   entered = true
   html.classList.add('entered')
   lenis?.start()
   ascii?.enter(at)
-  playIntro({ ascii, video, reduced, instant })
+  introDone = playIntro({ ascii, video, reduced, instant })
 }
 html.classList.add('armed')
 if (!gate || /^#(work|contact)$/.test(location.hash)) {
@@ -89,6 +91,20 @@ addEventListener('scroll', onScroll, { passive: true })
 addEventListener('resize', () => { heroH = hero.offsetHeight; lastP = -1; onScroll() })
 onScroll()
 
+// The run plays once. When it's over (and the name is in), the work rises over the hero like a card.
+const sheet = $<HTMLElement>('.sheet')!
+const inOut = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
+let risen = false
+ascii?.onEnd(async () => {
+  if (risen) return // only the first time; a replay just plays
+  risen = true
+  await introDone
+  await sleep(700) // a beat on the finished frame
+  if (scrollY > 8) return // they've already moved on
+  if (lenis) lenis.scrollTo(sheet, { duration: 2.2, easing: inOut })
+  else sheet.scrollIntoView({ behavior: 'smooth' })
+})
+
 const frameEl = $<HTMLElement>('.frame')
 const pad = (n: number) => String(n).padStart(3, '0')
 ascii?.onFrame((f, total) => {
@@ -99,7 +115,7 @@ const play = $<HTMLButtonElement>('.play')
 function syncPlay() {
   if (!play) return
   const on = ascii?.playing() ?? false
-  play.textContent = on ? 'Pause' : 'Play'
+  play.textContent = on ? 'Pause' : ascii?.done() ? 'Replay' : 'Play'
   play.dataset.state = on ? 'playing' : 'paused'
   play.setAttribute('aria-label', on ? 'Pause the background' : 'Play the background')
   play.hidden = !ascii

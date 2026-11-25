@@ -3,7 +3,8 @@
 // The red jacket keeps its colour; everything else is ink.
 
 const RAMP = ' .·:-=+*o#%@'
-const LOOP = { start: 1.0, end: 6.2 } // seconds of the clip we play
+const RUN = { start: 1.0, end: 6.2 } // the clean run we play, once: open snow, skier in frame (after it he swings into trees)
+const RATE = 0.5 // half speed: about ten seconds of skiing
 const MONO = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
 
 const VERT = `#version 300 es
@@ -115,6 +116,9 @@ export interface Ascii {
   setActive(on: boolean): void
   setPlaying(on: boolean): void
   playing(): boolean
+  /** true once the run has played to its end (until a replay) */
+  done(): boolean
+  onEnd(cb: () => void): void
   onFrame(cb: (frame: number, total: number) => void): void
 }
 
@@ -290,6 +294,17 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   let active = true
   let resume = false
   let frameCb: ((f: number, t: number) => void) | null = null
+  const TOTAL = Math.round((RUN.end - RUN.start) * 24)
+  // the run plays once and stops on its last frame
+  let done = false
+  let endCb: (() => void) | null = null
+  function checkEnd() {
+    const over = video.ended || (!video.paused && video.currentTime >= RUN.end)
+    if (done || !over) return
+    done = true
+    video.pause()
+    endCb?.()
+  }
   let last = performance.now()
   let time = 0
 
@@ -339,11 +354,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     if (Math.abs(p - pointerOn) > 0.001 || pointerOn > 0.01) dirty = true
     springLens(dt)
 
-    // loop only the clean run: open snow, skier in frame (the clip's last seconds swing into trees)
-    if (!video.paused && video.currentTime >= LOOP.end) {
-      video.currentTime = LOOP.start
-      snap = true
-    }
+    checkEnd()
 
     if (video.readyState >= 2 && (fresh || (!rvfc && !video.paused))) {
       gl.activeTexture(gl.TEXTURE0)
@@ -352,7 +363,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
       track()
       fresh = false
       dirty = true
-      frameCb?.(Math.max(0, Math.floor((video.currentTime - LOOP.start) * 24)), Math.round((LOOP.end - LOOP.start) * 24))
+      frameCb?.(Math.min(Math.max(0, Math.floor((video.currentTime - RUN.start) * 24)), TOTAL - 1), TOTAL)
     }
     const k = reduced ? 1 : 1 - Math.exp(-dt * 7)
     const moved = Math.abs(seen.x - focus.x) + Math.abs(seen.y - focus.y) + Math.abs(seen.zoom - focus.zoom) > 1e-4
@@ -414,8 +425,11 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   document.fonts.load(`400 16px "JetBrains Mono"`).finally(() => { drawAtlas(); dirty = true })
   video.addEventListener('loadeddata', () => { fresh = true })
   video.addEventListener('seeked', () => { fresh = true }) // the still frame behind the gate
-  const toStart = () => { if (video.currentTime < LOOP.start || video.currentTime >= LOOP.end) { video.currentTime = LOOP.start; snap = true } }
-  video.addEventListener('timeupdate', toStart) // also loops when frames are throttled
+  const toStart = () => { video.currentTime = RUN.start; snap = true }
+  video.addEventListener('timeupdate', checkEnd) // also stops it when frames are throttled
+  video.addEventListener('ended', checkEnd)
+  video.defaultPlaybackRate = RATE
+  video.playbackRate = RATE
   if (video.readyState >= 1) toStart()
   else video.addEventListener('loadedmetadata', toStart, { once: true })
   // the clip waits behind the gate as a faint still; enter() starts it
@@ -445,10 +459,13 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
       }
     },
     setPlaying(on) {
+      if (on && done) { done = false; toStart() } // a replay starts the run over
       if (on) video.play().catch(() => {})
       else video.pause()
     },
     playing: () => !video.paused,
+    done: () => done,
+    onEnd(cb) { endCb = cb },
     onFrame(cb) { frameCb = cb },
   }
 }
