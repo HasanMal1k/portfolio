@@ -24,13 +24,13 @@
 
     <!-- The way in. Clicking anywhere sends a ripple through the ASCII from that point and starts the clip. -->
     <button class="gate" type="button" aria-label="Enter the site">
-      <span class="gate-box" aria-hidden="true">Enter</span>
-      <span class="gate-hint" aria-hidden="true">Click anywhere</span>
+      <span class="gate-hint" aria-hidden="true"><span class="for-mouse">Click anywhere</span><span class="for-touch">Tap anywhere</span></span>
     </button>
 
     <header class="top">
       <a class="mark" href="#top">HM©</a>
       <nav aria-label="Main">
+        <a href="#experience">Experience</a>
         <a href="#work">Work</a>
         <a href="#contact">Contact</a>
       </nav>
@@ -61,6 +61,32 @@
       </section>
 
       <div class="sheet">
+        <!-- The card that rises over the hero once the skier's run is over. -->
+        <section class="exp" id="experience" aria-labelledby="exp-title">
+          <h2 id="exp-title" class="label">Experience</h2>
+          <!-- TODO: your roles, newest first, one <li> each. These three are placeholders. -->
+          <ol class="jobs">
+            <li class="job">
+              <span class="when">2025 — Now</span>
+              <h3 class="role">Role title</h3>
+              <span class="org">Company · City</span>
+              <p class="what">One line on what you built or owned there.</p>
+            </li>
+            <li class="job">
+              <span class="when">2024 — 2025</span>
+              <h3 class="role">Role title</h3>
+              <span class="org">Company · City</span>
+              <p class="what">One line on what you built or owned there.</p>
+            </li>
+            <li class="job">
+              <span class="when">2023 — 2024</span>
+              <h3 class="role">Role title</h3>
+              <span class="org">Company · City</span>
+              <p class="what">One line on what you built or owned there.</p>
+            </li>
+          </ol>
+        </section>
+
         <section class="work" id="work" aria-labelledby="work-title">
           <h2 id="work-title" class="label">Selected work</h2>
           <div class="table" role="table" aria-label="Projects">

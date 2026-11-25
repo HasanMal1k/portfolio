@@ -50,17 +50,18 @@ function enter(at: { x: number; y: number } | null, instant = false) {
   lenis?.start()
   ascii?.enter(at)
   introDone = playIntro({ ascii, video, reduced, instant })
+  if (!instant && !reduced) rise()
 }
 html.classList.add('armed')
-if (!gate || /^#(work|contact)$/.test(location.hash)) {
+if (!gate || /^#(experience|work|contact)$/.test(location.hash)) {
   enter(null, true) // a link straight to a section skips the show
 } else {
   history.scrollRestoration = 'manual'
   scrollTo(0, 0)
   lenis?.stop()
   gate.addEventListener('click', (e) => {
-    // a keyboard press has no pointer position: ripple from the button instead
-    const r = gate.querySelector('.gate-box')!.getBoundingClientRect()
+    // a keyboard press has no pointer position: ripple from the middle instead
+    const r = gate.querySelector('.gate-hint')!.getBoundingClientRect()
     enter(e.detail ? { x: e.clientX, y: e.clientY } : { x: r.left + r.width / 2, y: r.top + r.height / 2 })
   })
   addEventListener('keydown', (e) => {
@@ -84,6 +85,7 @@ function onScroll() {
   lastP = p
   ascii?.setDim(p)
   ascii?.setActive(p < 1) // covered: stop drawing and pause the clip; the skier lives in the hero only
+  if (p >= 1) ascii?.retire() // and once he's been covered, he's had his turn: the hero comes back as warping ASCII
   veil.style.opacity = (p * 0.7).toFixed(3)
   if (!reduced) stage.style.transform = `translate3d(0, ${(-p * 8).toFixed(2)}%, 0) scale(${(1 - p * 0.06).toFixed(4)})`
 }
@@ -91,36 +93,36 @@ addEventListener('scroll', onScroll, { passive: true })
 addEventListener('resize', () => { heroH = hero.offsetHeight; lastP = -1; onScroll() })
 onScroll()
 
-// The run plays once. When it's over (and the name is in), the work rises over the hero like a card.
+// Once the name is in, the card (experience first) rises over the hero while the skier is still on his
+// last stretch, covering him just before the run ends.
 const sheet = $<HTMLElement>('.sheet')!
 const inOut = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
-let risen = false
-ascii?.onEnd(async () => {
-  if (risen) return // only the first time; a replay just plays
-  risen = true
+async function rise() {
   await introDone
-  await sleep(700) // a beat on the finished frame
+  await sleep(200)
   if (scrollY > 8) return // they've already moved on
   if (lenis) lenis.scrollTo(sheet, { duration: 2.2, easing: inOut })
   else sheet.scrollIntoView({ behavior: 'smooth' })
-})
+}
 
 const frameEl = $<HTMLElement>('.frame')
 const pad = (n: number) => String(n).padStart(3, '0')
 ascii?.onFrame((f, total) => {
-  if (frameEl) frameEl.textContent = `Frame ${pad(f % total)}/${total}`
+  // the film's 125 frames, then the field after it, which runs on and on
+  const end = Number.isFinite(total)
+  if (frameEl) frameEl.textContent = `Frame ${pad(end ? f % total : f)}/${end ? total : '∞'}`
 })
 
 const play = $<HTMLButtonElement>('.play')
 function syncPlay() {
   if (!play) return
   const on = ascii?.playing() ?? false
-  play.textContent = on ? 'Pause' : ascii?.done() ? 'Replay' : 'Play'
+  play.textContent = on ? 'Pause' : 'Play'
   play.dataset.state = on ? 'playing' : 'paused'
   play.setAttribute('aria-label', on ? 'Pause the background' : 'Play the background')
   play.hidden = !ascii
 }
-play?.addEventListener('click', () => ascii?.setPlaying(!ascii.playing()))
+play?.addEventListener('click', () => { ascii?.setPlaying(!ascii.playing()); syncPlay() })
 video.addEventListener('play', syncPlay)
 video.addEventListener('pause', syncPlay)
 syncPlay()
@@ -137,4 +139,5 @@ const io = new IntersectionObserver(
   { threshold: 0.15, rootMargin: '0px 0px -8% 0px' },
 )
 $$<HTMLElement>('.table .row').forEach((el, i) => el.style.setProperty('--i', String(i)))
-$$<HTMLElement>('.label, .table .row, .blurb, .hello, .mail').forEach((el) => io.observe(el))
+$$<HTMLElement>('.job').forEach((el, i) => el.style.setProperty('--i', String(i)))
+$$<HTMLElement>('.label, .job, .table .row, .blurb, .hello, .mail').forEach((el) => io.observe(el))

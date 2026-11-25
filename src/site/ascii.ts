@@ -35,6 +35,8 @@ uniform float uRingW;     // device px between one swell and the next, roughly
 uniform float uRingAmp;   // 1 as it leaves the click, 0 once it has crossed the screen
 uniform float uIdle;      // how bright the picture is where the ripple hasn't reached yet
 uniform float uShade;     // overall brightness: the post-intro fade and the sheet covering the hero
+uniform float uGen;       // 0: the clip; 1: after it, a drifting field of contours that warps on its own
+uniform vec3  uGlitch;    // a band of rows (device px, top and bottom) that slips sideways by z px for a moment
 uniform vec3  uBg;
 uniform vec3  uInk;
 uniform vec3  uHot;
@@ -44,6 +46,30 @@ float hash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
+}
+
+float vnoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float fbm(vec2 p) {
+  float s = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 3; i++) { s += a * vnoise(p); p = p * 2.03 + 17.1; a *= 0.5; }
+  return s / 0.875;
+}
+
+// After the run: contour lines drifting like a map of the slope, for the dismorphia to bend.
+float field(vec2 p) {
+  vec2 x = p / uRes.y * 2.4;
+  float t = uTime * 0.05;
+  vec2 q = vec2(fbm(x + vec2(0.0, t)), fbm(x + vec2(5.2, 1.3) - t));
+  float n = fbm(x + q * 1.8 + vec2(t * 0.6, -t * 0.3));
+  float band = abs(fract(n * 8.0) - 0.5) * 2.0; // 0 on a contour line
+  float line = 1.0 - smoothstep(0.08, 0.32, band);
+  return max(line * (0.45 + 0.4 * n), smoothstep(0.55, 0.9, n) * 0.3);
 }
 
 // The cursor is a soft lens that bends the picture, not the glyphs. Under it the skier swells,
@@ -77,21 +103,30 @@ void main() {
 
   vec2 sp = warp(cc); // where this cell reads the picture from
   sp += rd / dist * sin(ahead * 2.4) * env * uRingW * 0.8; // the water bends the picture as it passes
+  if (cc.y > uGlitch.x && cc.y < uGlitch.y) sp.x += uGlitch.z; // a glitch: one band of rows slips sideways
 
-  // follow-cam: the skier's spot in the clip lands on the anchor, zoomed in
-  vec2 uv = uFocus + uK * (sp / uRes - uAnchor) / uZoom;
-  float inClip = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
-  vec3 c = texture(uVideo, clamp(uv, 0.0, 1.0)).rgb;
-
-  float lum = dot(c, vec3(0.299, 0.587, 0.114));
-  // skier, trees and shadows go dense; ski tracks and shade leave sparse marks that stream past
-  float dens = smoothstep(0.52, 0.1, lum);
-  // a soft spotlight on him: the trees and far snow stay as faint context
-  vec2 off = (sp / uRes - uAnchor) * vec2(uRes.x / uRes.y, 1.0);
-  dens *= mix(0.3, 1.0, smoothstep(0.75, 0.18, length(off)));
-  float red = smoothstep(0.12, 0.3, c.r - max(c.g, c.b));
-  dens = max(dens, red * 0.85) * inClip;
-  red *= inClip;
+  float dens = 0.0;
+  float red = 0.0;
+  if (uGen < 1.0) {
+    // follow-cam: the skier's spot in the clip lands on the anchor, zoomed in
+    vec2 uv = uFocus + uK * (sp / uRes - uAnchor) / uZoom;
+    float inClip = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+    vec3 c = texture(uVideo, clamp(uv, 0.0, 1.0)).rgb;
+    float lum = dot(c, vec3(0.299, 0.587, 0.114));
+    // skier, trees and shadows go dense; ski tracks and shade leave sparse marks that stream past
+    float dv = smoothstep(0.52, 0.1, lum);
+    // a soft spotlight on him: the trees and far snow stay as faint context
+    vec2 off = (sp / uRes - uAnchor) * vec2(uRes.x / uRes.y, 1.0);
+    dv *= mix(0.3, 1.0, smoothstep(0.75, 0.18, length(off)));
+    float rv = smoothstep(0.12, 0.3, c.r - max(c.g, c.b));
+    dens = max(dv, rv * 0.85) * inClip * (1.0 - uGen);
+    red = rv * inClip * (1.0 - uGen);
+  }
+  if (uGen > 0.0) {
+    // softer toward the edges, so the small print in the corners stays clear
+    vec2 e = (cc / uRes - 0.5) * vec2(uRes.x / uRes.y, 1.0);
+    dens = max(dens, field(sp) * uGen * mix(0.4, 1.0, smoothstep(0.95, 0.3, length(e))));
+  }
   dens = max(dens, ring * 0.9);
   float idx = floor(clamp(dens, 0.0, 0.999) * uGlyphs);
 
@@ -111,14 +146,13 @@ export interface Ascii {
   enter(at: { x: number; y: number } | null): void
   /** 0..1: sink the skier back once he has had his moment, so the name can take over */
   setFade(v: number): void
+  /** the clip has had its turn: from now on the hero is a field of ASCII that warps on its own */
+  retire(): void
   setDim(v: number): void
   /** false once the hero is covered: stop drawing and pause the clip until it shows again */
   setActive(on: boolean): void
   setPlaying(on: boolean): void
   playing(): boolean
-  /** true once the run has played to its end (until a replay) */
-  done(): boolean
-  onEnd(cb: () => void): void
   onFrame(cb: (frame: number, total: number) => void): void
 }
 
@@ -148,7 +182,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     k: U('uK'), focus: U('uFocus'), anchor: U('uAnchor'), zoom: U('uZoom'),
     pointer: U('uPointer'), drag: U('uDrag'), pointerOn: U('uPointerOn'), radius: U('uRadius'), time: U('uTime'),
     reveal: U('uReveal'), shade: U('uShade'), bg: U('uBg'), ink: U('uInk'), hot: U('uHot'),
-    ring: U('uRing'), ringW: U('uRingW'), ringAmp: U('uRingAmp'), idle: U('uIdle'),
+    ring: U('uRing'), ringW: U('uRingW'), ringAmp: U('uRingAmp'), idle: U('uIdle'), gen: U('uGen'), glitch: U('uGlitch'),
   }
   gl.uniform1i(u.video, 0)
   gl.uniform1i(u.atlas, 1)
@@ -281,7 +315,9 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   // ------------------------------------------------------------------ loop
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
   const RIPPLE = 1.9 // seconds for the entrance ripple to cross the screen
-  const ring = { x: 0, y: 0, t: -1 } // client px of the click; t: seconds since it (-1 waiting for one, Infinity done)
+  // a ripple: client px of its centre; t: seconds since it started (-1 waiting for the entrance, Infinity done);
+  // how long it runs, how hard it hits, and how far it reaches (1: right across the screen)
+  const ring = { x: 0, y: 0, t: -1, dur: RIPPLE, amp: 1, reach: 1 }
   let dim = 0
   let fade = 0
   let reveal = reduced ? 1 : 0
@@ -295,15 +331,68 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   let resume = false
   let frameCb: ((f: number, t: number) => void) | null = null
   const TOTAL = Math.round((RUN.end - RUN.start) * 24)
-  // the run plays once and stops on its last frame
-  let done = false
-  let endCb: (() => void) | null = null
+  // the run plays once; when it ends in view, the field fades in over it
   function checkEnd() {
     const over = video.ended || (!video.paused && video.currentTime >= RUN.end)
-    if (done || !over) return
-    done = true
+    if (over && !genTarget) retire(false)
+  }
+
+  // ---------------------------------------------------------------- after the clip: random dismorphia
+  let gen = 0
+  let genTarget = 0
+  let genPaused = false
+  let genClock = 0
+  let genFrame = TOTAL
+  function retire(instant: boolean) {
+    if (genTarget) return
+    genTarget = 1
+    if (instant) gen = 1
+    genPaused = reduced // with reduced motion the field holds still
     video.pause()
-    endCb?.()
+    gl.uniform1f(u.idle, 1) // later ripples shouldn't dim what they haven't reached
+    dirty = true
+  }
+  // a lens that drifts about on its own, on for a few seconds, then off and somewhere else
+  const roam = { t: 0, phase: Math.random() * 100, on: false, clock: 1.2 }
+  function roamStep(dt: number) {
+    roam.clock -= dt
+    if (roam.clock <= 0) {
+      roam.on = !roam.on
+      roam.clock = roam.on ? 3.5 + Math.random() * 4 : 1.5 + Math.random() * 2.5
+      if (roam.on) roam.phase = Math.random() * 1000
+    }
+    pointerTarget = roam.on ? 1 : 0
+    roam.t += dt
+    const r = canvas.getBoundingClientRect()
+    const t = roam.t + roam.phase
+    pointer.x = r.left + r.width * (0.5 + 0.4 * Math.sin(t * 0.55) * Math.cos(t * 0.17))
+    pointer.y = r.top + r.height * (0.5 + 0.36 * Math.sin(t * 0.43 + 1.7))
+    if (pointerOn < 0.01) Object.assign(lens, { x: pointer.x, y: pointer.y, vx: 0, vy: 0 })
+  }
+  // now and then a small ripple somewhere, and a band of rows that slips for a moment
+  const chaos = { ripple: 2.5, glitch: 1.5, slipping: false }
+  function chaosStep(dt: number) {
+    chaos.ripple -= dt
+    if (chaos.ripple <= 0 && !(ring.t >= 0 && ring.t < ring.dur)) {
+      chaos.ripple = 3 + Math.random() * 4
+      const r = canvas.getBoundingClientRect()
+      Object.assign(ring, {
+        x: r.left + r.width * (0.1 + Math.random() * 0.8), y: r.top + r.height * (0.1 + Math.random() * 0.8),
+        t: 0, dur: 1.7, amp: 0.55, reach: 0.45,
+      })
+    }
+    chaos.glitch -= dt
+    if (chaos.glitch > 0) return
+    chaos.slipping = !chaos.slipping
+    if (chaos.slipping) {
+      const y = Math.random() * canvas.height
+      const dx = cell.w * (2 + Math.floor(Math.random() * 9)) * (Math.random() < 0.5 ? -1 : 1)
+      gl.uniform3f(u.glitch, y, y + cell.h * (1 + Math.floor(Math.random() * 6)), dx)
+      chaos.glitch = 0.07 + Math.random() * 0.15
+    } else {
+      gl.uniform3f(u.glitch, 0, 0, 0)
+      chaos.glitch = 1.2 + Math.random() * 3
+    }
   }
   let last = performance.now()
   let time = 0
@@ -346,9 +435,18 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   function step(now: number) {
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
-    time += dt
+    const genOn = genTarget > 0 && !genPaused
+    if (!(genTarget && genPaused)) time += dt
+    let genTick = false
+    if (genOn) {
+      if (gen < 1) gen = Math.min(1, gen + dt / 1.6) // crossfade from the clip's last frame
+      roamStep(dt)
+      chaosStep(dt)
+      genClock += dt
+      if (genClock >= 1 / 24) { genClock %= 1 / 24; genTick = true; dirty = true; frameCb?.(++genFrame, Infinity) }
+    }
     if (reveal < 1) { reveal = Math.min(1, reveal + dt / 1.4); dirty = true }
-    if (ring.t >= 0 && ring.t < RIPPLE) { ring.t += dt; dirty = true }
+    if (ring.t >= 0 && ring.t < ring.dur) { ring.t += dt; dirty = true }
     const p = pointerOn
     pointerOn += (pointerTarget - pointerOn) * Math.min(1, dt * 4)
     if (Math.abs(p - pointerOn) > 0.001 || pointerOn > 0.01) dirty = true
@@ -356,7 +454,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
 
     checkEnd()
 
-    if (video.readyState >= 2 && (fresh || (!rvfc && !video.paused))) {
+    if (gen < 1 && video.readyState >= 2 && (fresh || (!rvfc && !video.paused))) {
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, videoTex)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video)
@@ -372,8 +470,9 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     focus.zoom += (seen.zoom - focus.zoom) * (reduced ? 1 : 1 - Math.exp(-dt * 2))
     if (moved) dirty = true
     if (!dirty) return
+    if (gen >= 1 && genOn && !genTick) return // the field moves at 24 fps, like the film did
     framing()
-    const rippling = ring.t >= 0 && ring.t < RIPPLE
+    const rippling = ring.t >= 0 && ring.t < ring.dur
     // client px → canvas px (the hero scales as the sheet covers it, so measure the real box)
     const r = pointerOn > 0.002 || rippling ? canvas.getBoundingClientRect() : null
     const sx = r ? canvas.width / (r.width || 1) : 1
@@ -381,13 +480,15 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     if (r && rippling) {
       const x = (ring.x - r.left) * sx
       const y = (ring.y - r.top) * sy
-      const w = Math.min(canvas.width, canvas.height) * 0.045
-      // far enough to clear the farthest corner, wake and all; fast at first, easing out like a splash
-      const far = Math.max(Math.hypot(x, y), Math.hypot(canvas.width - x, y), Math.hypot(x, canvas.height - y), Math.hypot(canvas.width - x, canvas.height - y)) + w * 3
-      const k = Math.min(1, ring.t / RIPPLE)
-      gl.uniform3f(u.ring, x, y, far * (1 - (1 - k) ** 2))
+      const short = Math.min(canvas.width, canvas.height)
+      const w = short * (ring.reach < 1 ? 0.032 : 0.045)
+      // the entrance clears the farthest corner, wake and all; the small ones die out sooner
+      const far = ring.reach < 1 ? short * ring.reach
+        : Math.max(Math.hypot(x, y), Math.hypot(canvas.width - x, y), Math.hypot(x, canvas.height - y), Math.hypot(canvas.width - x, canvas.height - y)) + w * 3
+      const k = Math.min(1, ring.t / ring.dur)
+      gl.uniform3f(u.ring, x, y, far * (1 - (1 - k) ** 2)) // fast at first, easing out like a splash
       gl.uniform1f(u.ringW, w)
-      gl.uniform1f(u.ringAmp, (1 - k) ** 1.3)
+      gl.uniform1f(u.ringAmp, (1 - k) ** 1.3 * ring.amp)
     } else {
       gl.uniform3f(u.ring, 0, 0, ring.t < 0 ? -1e5 : 1e6)
       gl.uniform1f(u.ringAmp, 0)
@@ -405,7 +506,8 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     gl.uniform1f(u.pointerOn, pointerOn)
     gl.uniform1f(u.time, time)
     gl.uniform1f(u.reveal, reveal * 1.1)
-    gl.uniform1f(u.shade, (1 - dim * 0.72) * (1 - fade * 0.7))
+    gl.uniform1f(u.shade, (1 - dim * 0.72) * (1 - fade * 0.7 * (1 - gen * 0.15)))
+    gl.uniform1f(u.gen, gen)
     gl.drawArrays(gl.TRIANGLES, 0, 3)
     dirty = false
   }
@@ -413,7 +515,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   if (import.meta.env.DEV) {
     Object.assign(window, {
       __ascii: {
-        seen, focus, gl, prog, pointer, lens, ring, state: () => ({ active, pointerOn, fade, paused: video.paused }),
+        seen, focus, gl, prog, pointer, lens, ring, state: () => ({ active, pointerOn, fade, gen, genPaused, paused: video.paused }),
         step: (ms = 16) => { fresh = true; dirty = true; step(last + ms) },
       },
     })
@@ -454,18 +556,17 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
         resume = !video.paused // remember whether it was playing, so a Pause the visitor chose sticks
         video.pause()
       } else {
-        if (resume) video.play().catch(() => {})
+        if (resume && !genTarget) video.play().catch(() => {})
         dirty = true
       }
     },
     setPlaying(on) {
-      if (on && done) { done = false; toStart() } // a replay starts the run over
+      if (genTarget) { genPaused = !on; dirty = true; return } // after the clip, the button holds the field still
       if (on) video.play().catch(() => {})
       else video.pause()
     },
-    playing: () => !video.paused,
-    done: () => done,
-    onEnd(cb) { endCb = cb },
+    playing: () => (genTarget ? !genPaused : !video.paused),
+    retire: () => retire(true),
     onFrame(cb) { frameCb = cb },
   }
 }
