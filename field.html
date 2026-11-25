@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Hasan Malik — AI Engineer</title>
+    <meta name="description" content="Hasan Malik is an AI engineer building agentic systems. Wander the field and pick up an animal to read about the work." />
+    <meta name="theme-color" content="#bfe6ff" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Hasan Malik — AI Engineer" />
+    <meta property="og:description" content="AI engineer building agentic systems." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <a class="skip" href="#legend">Skip to the animals</a>
+
+    <!-- The field: one canvas. Low-poly world normally; coloured ASCII on paper while you hold an animal. -->
+    <canvas class="world" aria-hidden="true"></canvas>
+
+    <header class="top">
+      <h1 class="enter" style="--d: 0.3s">
+        <span class="h1-name">Hasan Malik</span>
+        <span class="h1-role">AI engineer · agentic systems</span>
+      </h1>
+      <button class="motion enter" style="--d: 0.5s" type="button" aria-pressed="false" aria-label="Pause the animals">
+        <span class="motion-icon" aria-hidden="true"></span><span class="motion-text">Pause</span>
+      </button>
+    </header>
+
+    <p class="tag" aria-hidden="true"></p>
+
+    <p class="hint enter" style="--d: 1.2s">Drag to wander <span aria-hidden="true">·</span> pick up an animal</p>
+
+    <nav class="legend enter" style="--d: 0.9s" id="legend" aria-label="Pages">
+      <p class="legend-title">Who carries what</p>
+      <ul>
+        <li><button type="button" data-seek="chicken"><i class="dot dot-chicken" aria-hidden="true"></i>Chicken<span>About</span></button></li>
+        <li><button type="button" data-seek="horse"><i class="dot dot-horse" aria-hidden="true"></i>Horse<span>Sizer</span></button></li>
+        <li><button type="button" data-seek="sheep"><i class="dot dot-sheep" aria-hidden="true"></i>Sheep<span>Law pipeline</span></button></li>
+        <li><button type="button" data-seek="capybara"><i class="dot dot-capybara" aria-hidden="true"></i>Capybara<span>Contact</span></button></li>
+      </ul>
+    </nav>
+
+    <aside class="panel" id="panel" aria-live="polite" hidden>
+      <p class="holding"></p>
+
+      <!-- TODO: rewrite in your own words. -->
+      <article data-id="about" aria-labelledby="about-title">
+        <h2 id="about-title">Hi, I'm Hasan.</h2>
+        <p>
+          I'm an AI engineer. My work sits between a language model and the world it acts on: the tool
+          calls, the memory, the retrieval, and the checks that keep an agent honest when nobody is watching.
+        </p>
+        <p>Several agents, one rhythm. I call that the resonance part.</p>
+      </article>
+
+      <article data-id="sizer" aria-labelledby="sizer-title">
+        <h2 id="sizer-title">Sizer</h2>
+        <p>
+          A position size calculator for stocks, forex, crypto and futures. Enter balance, risk and stop
+          loss; get exact shares, lots or contracts, with leverage, fees and risk-reward.
+        </p>
+        <dl class="facts">
+          <dt>Year</dt><dd>2026</dd>
+          <dt>Stack</dt><dd>Next.js · TypeScript · Vercel</dd>
+        </dl>
+        <a class="go" href="https://sizer-five.vercel.app" target="_blank" rel="noopener">Open Sizer <span aria-hidden="true">↗</span></a>
+      </article>
+
+      <!-- TODO: check this description, add the stack and a link. -->
+      <article data-id="law" aria-labelledby="law-title">
+        <h2 id="law-title">Law scraping pipeline</h2>
+        <p>A pipeline that collects legal texts and turns them into structured, searchable data.</p>
+        <dl class="facts">
+          <dt>Year</dt><dd>2026</dd>
+          <dt>Kind</dt><dd>Scraping · Data pipeline</dd>
+        </dl>
+      </article>
+
+      <article data-id="contact" aria-labelledby="contact-title">
+        <h2 id="contact-title">Say hello.</h2>
+        <p>Got an agent that needs building, or a question about one? Write to me.</p>
+        <!-- TODO: your real address. -->
+        <a class="go" href="mailto:you@example.com">you@example.com</a>
+      </article>
+
+      <button class="put-down" type="button">Put it down</button>
+    </aside>
+
+    <script type="module" src="/src/field.ts"></script>
+  </body>
+</html>

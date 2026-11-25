@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Hasan Malik — AI Engineer</title>
+    <meta name="description" content="Hasan Malik is an AI engineer building agentic systems: language models wired to tools, memory and each other." />
+    <meta name="theme-color" content="#0e0e0d" />
+    <meta name="color-scheme" content="dark" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Hasan Malik — AI Engineer" />
+    <meta property="og:description" content="AI engineer building agentic systems." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/media/skier.mp4" as="video" type="video/mp4" />
+  </head>
+  <body>
+    <a class="skip" href="#work">Skip to work</a>
+
+    <!-- The skier clip, drawn as ASCII into the hero's canvas. Footage: "Skiing Down Slope" by Ella Wei, Pexels. -->
+    <video class="src" src="/media/skier.mp4" muted loop playsinline preload="auto" aria-hidden="true"></video>
+
+    <header class="top">
+      <a class="mark" href="#top">HM©</a>
+      <nav aria-label="Main">
+        <a href="#work">Work</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </header>
+
+    <main>
+      <!-- The hero stays pinned; the sheet below slides up over it. -->
+      <section class="hero" id="top" aria-labelledby="title">
+        <div class="stage">
+          <canvas class="ascii" aria-hidden="true"></canvas>
+          <!-- Three lines, three type voices: serif with script initials, pixel, serif with pixel icons.
+               main.ts splits the serif words into letters and scrambles the pixel word in, after the skier has had a head start. -->
+          <h1 id="title" class="headline">
+            <span class="sr">Hasan Malik, AI engineer building agentic systems</span>
+            <span class="art" aria-hidden="true">
+              <span class="line l1"><span class="sc">H</span><span class="sf">asan</span> <span class="sc">M</span><span class="sf">alik</span></span>
+              <span class="line l2"><i class="ico" data-px="snow"></i><span class="px">AI Engineer</span><i class="ico" data-px="snow"></i></span>
+              <span class="line l3"><span class="sf">Agentic</span> <span class="sf it">systems</span><i class="ico" data-px="bot"></i><i class="ico" data-px="spark"></i></span>
+            </span>
+          </h1>
+
+          <p class="side side-l"><span>Portfolio ©2026</span><span>ASCII · 24 fps</span></p>
+          <p class="side side-r"><span class="frame" aria-hidden="true">Frame 000/125</span>
+            <button class="play" type="button" aria-label="Pause the background" data-state="playing">Pause</button>
+          </p>
+          <p class="scroll-cue" aria-hidden="true">Scroll</p>
+        </div>
+        <div class="veil" aria-hidden="true"></div>
+      </section>
+
+      <div class="sheet">
+        <section class="work" id="work" aria-labelledby="work-title">
+          <h2 id="work-title" class="label">Selected work</h2>
+          <div class="table" role="table" aria-label="Projects">
+            <div class="row head" role="row">
+              <span role="columnheader">Project</span>
+              <span role="columnheader">Kind</span>
+              <span role="columnheader">Stack</span>
+              <span role="columnheader">Year</span>
+            </div>
+            <a class="row" role="row" href="https://sizer-five.vercel.app" target="_blank" rel="noopener">
+              <span role="cell">Sizer</span>
+              <span role="cell">Web app</span>
+              <span role="cell">Next.js · TypeScript</span>
+              <span role="cell">2026</span>
+            </a>
+            <!-- TODO: check this one and add a link. -->
+            <div class="row" role="row">
+              <span role="cell">Law scraping pipeline</span>
+              <span role="cell">Data pipeline</span>
+              <span role="cell">Scraping · Parsing</span>
+              <span role="cell">2026</span>
+            </div>
+            <a class="row" role="row" href="/field.html">
+              <span role="cell">The Field</span>
+              <span role="cell">Interactive 3D</span>
+              <span role="cell">three.js · WebGL</span>
+              <span role="cell">2026</span>
+            </a>
+            <a class="row" role="row" href="#top">
+              <span role="cell">This site</span>
+              <span role="cell">ASCII video</span>
+              <span role="cell">WebGL2 · Vite</span>
+              <span role="cell">2026</span>
+            </a>
+          </div>
+          <p class="blurb">
+            I'm an AI engineer. I build what sits between a language model and the world it acts on:
+            the tool calls, the memory, the retrieval, and the checks that keep an agent honest.
+          </p>
+        </section>
+
+        <section class="contact" id="contact" aria-labelledby="contact-title">
+          <h2 id="contact-title" class="label">Contact</h2>
+          <!-- TODO: your real address. -->
+          <a class="hello" href="mailto:you@example.com"><span>Say hello</span><b aria-hidden="true">↗</b></a>
+          <p class="mail">you@example.com</p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="foot">
+      <span>© 2026 Hasan Malik</span>
+      <span>Footage: Ella Wei / Pexels</span>
+    </footer>
+
+    <script type="module" src="/src/site/main.ts"></script>
+  </body>
+</html>
