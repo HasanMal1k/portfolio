@@ -37,6 +37,7 @@ uniform float uIdle;      // how bright the picture is where the ripple hasn't r
 uniform float uShade;     // overall brightness: the post-intro fade and the sheet covering the hero
 uniform float uGen;       // 0: the clip; 1: after it, a drifting field of contours that warps on its own
 uniform vec3  uGlitch;    // a band of rows (device px, top and bottom) that slips sideways by z px for a moment
+uniform float uMorph;     // 0: the contours trace the clip's last frame; 1: they're pure drifting noise
 uniform vec3  uBg;
 uniform vec3  uInk;
 uniform vec3  uHot;
@@ -62,11 +63,14 @@ float fbm(vec2 p) {
 }
 
 // After the run: contour lines drifting like a map of the slope, for the dismorphia to bend.
-float field(vec2 p) {
+// hf is the clip's last frame as a height map (him a hill, the snow flat), so at first the lines trace
+// his shape; uMorph hands the map over to the noise and he drifts apart into it.
+float field(vec2 p, float hf) {
   vec2 x = p / uRes.y * 2.4;
   float t = uTime * 0.05;
   vec2 q = vec2(fbm(x + vec2(0.0, t)), fbm(x + vec2(5.2, 1.3) - t));
   float n = fbm(x + q * 1.8 + vec2(t * 0.6, -t * 0.3));
+  n = mix(hf, n, uMorph);
   float band = abs(fract(n * 8.0) - 0.5) * 2.0; // 0 on a contour line
   float line = 1.0 - smoothstep(0.08, 0.32, band);
   return max(line * (0.45 + 0.4 * n), smoothstep(0.55, 0.9, n) * 0.3);
@@ -107,25 +111,35 @@ void main() {
 
   float dens = 0.0;
   float red = 0.0;
-  if (uGen < 1.0) {
+  float hf = 0.0;
+  if (uGen < 1.0 || uMorph < 1.0) {
     // follow-cam: the skier's spot in the clip lands on the anchor, zoomed in
     vec2 uv = uFocus + uK * (sp / uRes - uAnchor) / uZoom;
     float inClip = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
-    vec3 c = texture(uVideo, clamp(uv, 0.0, 1.0)).rgb;
-    float lum = dot(c, vec3(0.299, 0.587, 0.114));
-    // skier, trees and shadows go dense; ski tracks and shade leave sparse marks that stream past
-    float dv = smoothstep(0.52, 0.1, lum);
     // a soft spotlight on him: the trees and far snow stay as faint context
     vec2 off = (sp / uRes - uAnchor) * vec2(uRes.x / uRes.y, 1.0);
-    dv *= mix(0.3, 1.0, smoothstep(0.75, 0.18, length(off)));
-    float rv = smoothstep(0.12, 0.3, c.r - max(c.g, c.b));
-    dens = max(dv, rv * 0.85) * inClip * (1.0 - uGen);
-    red = rv * inClip * (1.0 - uGen);
+    float spot = smoothstep(0.75, 0.18, length(off));
+    if (uGen < 1.0) {
+      // (explicit level 0: every pixel of a cell must read the same texel, or its glyph tears)
+      vec3 c = textureLod(uVideo, clamp(uv, 0.0, 1.0), 0.0).rgb;
+      float lum = dot(c, vec3(0.299, 0.587, 0.114));
+      // skier, trees and shadows go dense; ski tracks and shade leave sparse marks that stream past
+      float dv = smoothstep(0.52, 0.1, lum) * mix(0.3, 1.0, spot);
+      float rv = smoothstep(0.12, 0.3, c.r - max(c.g, c.b));
+      dens = max(dv, rv * 0.85) * inClip * (1.0 - uGen);
+      red = rv * inClip * (1.0 - uGen);
+    }
+    if (uMorph < 1.0) {
+      // the last frame, blurred a mip level so its contours come out smooth (the clip is only 426 px wide).
+      // The snow sits at mid grey, so everything brighter than his shadows stays flat.
+      float lb = dot(textureLod(uVideo, clamp(uv, 0.0, 1.0), 1.0).rgb, vec3(0.299, 0.587, 0.114));
+      hf = smoothstep(0.44, 0.08, lb) * mix(0.35, 1.0, spot) * inClip;
+    }
   }
   if (uGen > 0.0) {
     // softer toward the edges, so the small print in the corners stays clear
     vec2 e = (cc / uRes - 0.5) * vec2(uRes.x / uRes.y, 1.0);
-    dens = max(dens, field(sp) * uGen * mix(0.4, 1.0, smoothstep(0.95, 0.3, length(e))));
+    dens = max(dens, field(sp, hf) * uGen * mix(0.4, 1.0, smoothstep(0.95, 0.3, length(e))));
   }
   dens = max(dens, ring * 0.9);
   float idx = floor(clamp(dens, 0.0, 0.999) * uGlyphs);
@@ -150,6 +164,8 @@ export interface Ascii {
   setFade(v: number): void
   /** the clip has had its turn: from now on the hero is a field of ASCII that warps on its own */
   retire(): void
+  /** once the clip has become the field: after the melt when it ends in view, at once when it was swapped out of sight */
+  onSettled(cb: () => void): void
   setDim(v: number): void
   /** false once the hero is covered: stop drawing and pause the clip until it shows again */
   setActive(on: boolean): void
@@ -184,7 +200,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     k: U('uK'), focus: U('uFocus'), anchor: U('uAnchor'), zoom: U('uZoom'),
     pointer: U('uPointer'), drag: U('uDrag'), pointerOn: U('uPointerOn'), radius: U('uRadius'), time: U('uTime'),
     reveal: U('uReveal'), shade: U('uShade'), bg: U('uBg'), ink: U('uInk'), hot: U('uHot'),
-    ring: U('uRing'), ringW: U('uRingW'), ringAmp: U('uRingAmp'), idle: U('uIdle'), gen: U('uGen'), glitch: U('uGlitch'),
+    ring: U('uRing'), ringW: U('uRingW'), ringAmp: U('uRingAmp'), idle: U('uIdle'), gen: U('uGen'), glitch: U('uGlitch'), morph: U('uMorph'),
   }
   gl.uniform1i(u.video, 0)
   gl.uniform1i(u.atlas, 1)
@@ -348,13 +364,34 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   let genPaused = false
   let genClock = 0
   let genFrame = TOTAL
+  // The melt: his glyphs become contour lines tracing his last frame (gen), then the noise takes the map
+  // over and he drifts apart into it (morph). Out of sight, it all happens at once.
+  let morphT = 0
+  const smooth = (t: number) => t * t * (3 - 2 * t)
+  let settled = false
+  const settleCbs: (() => void)[] = []
+  function settle() {
+    if (settled) return
+    settled = true
+    for (const cb of settleCbs.splice(0)) cb()
+  }
   function retire(instant: boolean) {
     if (genTarget) return
     genTarget = 1
-    if (instant) gen = 1
     genPaused = reduced // with reduced motion the field holds still
     video.pause()
     gl.uniform1f(u.idle, 1) // later ripples shouldn't dim what they haven't reached
+    if (instant) {
+      gen = 1
+      morphT = 1
+      settle()
+    } else {
+      // blurred copies of the last frame, for smooth contours
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, videoTex)
+      gl.generateMipmap(gl.TEXTURE_2D)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+    }
     dirty = true
   }
   // a lens that drifts about on its own, on for a few seconds, then off and somewhere else
@@ -444,9 +481,13 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     if (!(genTarget && genPaused)) time += dt
     let genTick = false
     if (genOn) {
-      if (gen < 1) gen = Math.min(1, gen + dt / 1.6) // crossfade from the clip's last frame
-      roamStep(dt)
-      chaosStep(dt)
+      if (gen < 1) { gen = Math.min(1, gen + dt / 1.2); dirty = true } // his glyphs become contour lines
+      if (gen >= 1 && morphT < 1) { // then, once his outline is drawn, the noise takes over the map
+        morphT = Math.min(1, morphT + dt / 3.4)
+        dirty = true
+        if (morphT >= 1) settle()
+      }
+      if (morphT >= 1) { roamStep(dt); chaosStep(dt) } // the random dismorphia waits for the melt to finish
       genClock += dt
       if (genClock >= 1 / 24) { genClock %= 1 / 24; genTick = true; dirty = true; frameCb?.(++genFrame, Infinity) }
     }
@@ -460,7 +501,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     checkEnd()
     if (held && !genTarget && dim <= 0.02) retire(false) // they stopped the card and came back up
 
-    if (gen < 1 && video.readyState >= 2 && (fresh || (!rvfc && !video.paused))) {
+    if (!genTarget && video.readyState >= 2 && (fresh || (!rvfc && !video.paused))) {
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, videoTex)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video)
@@ -476,7 +517,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     focus.zoom += (seen.zoom - focus.zoom) * (reduced ? 1 : 1 - Math.exp(-dt * 2))
     if (moved) dirty = true
     if (!dirty) return
-    if (gen >= 1 && genOn && !genTick) return // the field moves at 24 fps, like the film did
+    if (morphT >= 1 && genOn && !genTick) return // the field moves at 24 fps, like the film did (the melt runs smooth)
     framing()
     const rippling = ring.t >= 0 && ring.t < ring.dur
     // client px → canvas px (the hero scales as the sheet covers it, so measure the real box)
@@ -512,8 +553,11 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     gl.uniform1f(u.pointerOn, pointerOn)
     gl.uniform1f(u.time, time)
     gl.uniform1f(u.reveal, reveal * 1.1)
-    gl.uniform1f(u.shade, (1 - dim * 0.72) * (1 - fade * 0.7 * (1 - gen * 0.15)))
+    const m = smooth(morphT)
+    const lift = 0.3 * gen * (1 - m) // the map glows up while it shows his outline, then settles as he drifts apart
+    gl.uniform1f(u.shade, (1 - dim * 0.72) * (1 - fade * 0.7 * (1 - gen * 0.15 - lift)))
     gl.uniform1f(u.gen, gen)
+    gl.uniform1f(u.morph, m)
     gl.drawArrays(gl.TRIANGLES, 0, 3)
     dirty = false
   }
@@ -521,7 +565,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   if (import.meta.env.DEV) {
     Object.assign(window, {
       __ascii: {
-        seen, focus, gl, prog, pointer, lens, ring, state: () => ({ active, pointerOn, fade, gen, genPaused, paused: video.paused }),
+        seen, focus, gl, prog, pointer, lens, ring, state: () => ({ active, pointerOn, fade, gen, morphT, settled, genPaused, paused: video.paused }),
         step: (ms = 16) => { fresh = true; dirty = true; step(last + ms) },
       },
     })
@@ -573,6 +617,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     },
     playing: () => (genTarget ? !genPaused : !video.paused),
     retire: () => retire(true),
+    onSettled(cb) { if (settled) cb(); else settleCbs.push(cb) },
     onFrame(cb) { frameCb = cb },
   }
 }

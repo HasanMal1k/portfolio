@@ -90,13 +90,13 @@ addEventListener('scroll', onScroll, { passive: true })
 addEventListener('resize', () => { heroH = hero.offsetHeight; lastP = -1; onScroll() })
 onScroll()
 
-// Once the name is in, the card (experience first) rises over the hero while the skier is still on his
-// last stretch, covering him just before the run ends.
+// Once the name is in and the skier has melted into the contour map, the card (experience first) rises over the hero.
 const sheet = $<HTMLElement>('.sheet')!
 const inOut = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
 async function rise() {
   await introDone
-  await sleep(200)
+  if (ascii) await new Promise<void>((r) => ascii.onSettled(r))
+  await sleep(900) // a beat on the finished map
   if (scrollY > 8) return // they've already moved on
   if (lenis) lenis.scrollTo(sheet, { duration: 2.2, easing: inOut })
   else sheet.scrollIntoView({ behavior: 'smooth' })
