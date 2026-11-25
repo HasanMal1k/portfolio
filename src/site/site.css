@@ -50,22 +50,15 @@ h1, h2, p { margin: 0; font-weight: 400; }
   transition: opacity 0.7s var(--ease), visibility 0s 0.7s;
 }
 .gate:focus-visible { outline: none; }
-.gate:focus-visible .gate-ring { outline: 1px solid var(--hot); outline-offset: 8px; }
-.gate-ring {
-  position: relative; display: grid; place-items: center;
-  width: 128px; aspect-ratio: 1; border-radius: 50%;
+.gate:focus-visible .gate-box { outline: 1px solid var(--hot); outline-offset: 6px; }
+.gate-box {
+  display: block; padding: 16px 44px;
   border: 1px solid rgba(233, 229, 220, 0.5); background: rgba(14, 14, 13, 0.4);
   font: 400 11px/1 var(--mono); letter-spacing: 0.22em; text-indent: 0.22em; text-transform: uppercase;
-  transition: background-color 0.5s var(--ease), color 0.5s var(--ease), border-color 0.5s var(--ease), transform 0.7s var(--ease);
+  transition: background-color 0.4s var(--ease), color 0.4s var(--ease), border-color 0.4s var(--ease), transform 0.4s var(--ease);
 }
-/* a slow sonar ping, a hint of the ripple to come */
-.gate-ring::after {
-  content: ''; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid var(--ink);
-  opacity: 0; animation: ping 2.8s var(--ease) infinite 0.6s;
-}
-@keyframes ping { 0% { transform: scale(1); opacity: 0.45; } 100% { transform: scale(2.1); opacity: 0; } }
-.gate:hover .gate-ring { background: var(--ink); border-color: var(--ink); color: var(--bg); transform: scale(1.08); }
-.gate:active .gate-ring { transform: scale(0.96); transition-duration: 0.15s; }
+.gate:hover .gate-box { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.gate:active .gate-box { transform: scale(0.97); transition-duration: 0.15s; }
 .gate-hint { font: 400 10px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
 .entered .gate { opacity: 0; visibility: hidden; pointer-events: none; }
 /* main.ts arms the gate; if it never does, the gate steps aside rather than trap the page */
@@ -277,5 +270,5 @@ a.row:hover::after { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .label, .blurb, .hello, .mail, .row > span, .row::after { transition: none; transform: none; opacity: 1; }
   .row::after { transform: scaleX(1); }
-  .scroll-cue::after, .pxi path, .gate-ring::after { animation: none; }
+  .scroll-cue::after, .pxi path { animation: none; }
 }

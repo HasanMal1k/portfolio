@@ -57,8 +57,8 @@ if (!gate || /^#(work|contact)$/.test(location.hash)) {
   scrollTo(0, 0)
   lenis?.stop()
   gate.addEventListener('click', (e) => {
-    // a keyboard press has no pointer position: ripple from the ring instead
-    const r = gate.querySelector('.gate-ring')!.getBoundingClientRect()
+    // a keyboard press has no pointer position: ripple from the button instead
+    const r = gate.querySelector('.gate-box')!.getBoundingClientRect()
     enter(e.detail ? { x: e.clientX, y: e.clientY } : { x: r.left + r.width / 2, y: r.top + r.height / 2 })
   })
   addEventListener('keydown', (e) => {

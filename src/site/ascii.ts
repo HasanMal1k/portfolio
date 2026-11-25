@@ -106,7 +106,7 @@ void main() {
 }`
 
 export interface Ascii {
-  /** the visitor pressed Enter: ripple out from this point (client px; null for no ripple) and start the clip */
+  /** the visitor pressed Enter: ripple out from this point (client px; null for no ripple), start the clip, retire the cursor warp */
   enter(at: { x: number; y: number } | null): void
   /** 0..1: sink the skier back once he has had his moment, so the name can take over */
   setFade(v: number): void
@@ -283,6 +283,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   let reveal = reduced ? 1 : 0
   let pointerOn = 0
   let pointerTarget = 0
+  let lensOn = true // the cursor warp plays over the still behind the gate; once in, the picture stays true
   const pointer = { x: -1e4, y: -1e4 } // client px
   const lens = { x: 0, y: 0, vx: 0, vy: 0 } // a point on a spring that trails the cursor
   let dirty = true
@@ -293,6 +294,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   let time = 0
 
   const aim = (e: PointerEvent) => {
+    if (!lensOn) return
     if (pointerOn < 0.01) Object.assign(lens, { x: e.clientX, y: e.clientY, vx: 0, vy: 0 })
     pointer.x = e.clientX
     pointer.y = e.clientY
@@ -422,6 +424,8 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   return {
     enter(at) {
       if (ring.t !== -1) return
+      lensOn = false
+      pointerTarget = 0 // the warp relaxes away as the ripple takes over
       if (at && !reduced) Object.assign(ring, { x: at.x, y: at.y, t: 0 })
       else ring.t = Infinity
       if (!reduced) video.play().catch(() => {})
