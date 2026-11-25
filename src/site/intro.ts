@@ -12,7 +12,7 @@ const RAMP = '.:-=+*o#%@01'
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 function fontsReady() {
-  const faces = ['400 64px "Instrument Serif"', '400 64px "Pinyon Script"', '400 64px "Pixelify Sans"']
+  const faces = ['500 64px "Geist Variable"']
   // never wait on a slow font for more than a couple of seconds
   return Promise.race([Promise.all(faces.map((f) => document.fonts.load(f))), sleep(2500)])
 }
@@ -46,7 +46,7 @@ function armHover(px: HTMLElement | null) {
   })
 }
 
-/** Plays the opening; resolves once the name and the small print are all in. */
+/** Plays the opening; resolves once the name is in (the small print finishes on its own). */
 export async function playIntro(o: { ascii: Ascii | null; video: HTMLVideoElement; reduced: boolean; instant: boolean }) {
   const head = document.querySelector<HTMLElement>('.headline')
   if (!head) return
@@ -65,7 +65,7 @@ export async function playIntro(o: { ascii: Ascii | null; video: HTMLVideoElemen
     return
   }
 
-  await Promise.all([fontsReady(), o.ascii ? headStart(o.video, 2600) : sleep(600)])
+  await Promise.all([fontsReady(), o.ascii ? headStart(o.video, 2000) : sleep(600)])
   html.classList.add('intro')
   gsap.set(art, { autoAlpha: 1 })
   const em = parseFloat(getComputedStyle(head).fontSize)
@@ -76,11 +76,11 @@ export async function playIntro(o: { ascii: Ascii | null; video: HTMLVideoElemen
   if (o.ascii) tl.to(fade, { v: 1, duration: 2.4, ease: 'power2.inOut', onUpdate: () => o.ascii!.setFade(fade.v) }, 0)
 
   // ...and the name surfaces through it, a word at a time
-  const t0 = o.ascii ? 0.9 : 0
-  const gap = 0.62
+  const t0 = o.ascii ? 0.8 : 0
+  const gap = 0.5
   tl.from(words, {
     autoAlpha: 0, y: em * 0.3, filter: 'blur(12px)',
-    duration: 1.9, ease: 'power3.out', stagger: gap, clearProps: 'filter',
+    duration: 1.6, ease: 'power3.out', stagger: gap, clearProps: 'filter',
   }, t0)
 
   // the snowflakes pop in pixel steps as the last word lands, then the small print
@@ -89,5 +89,5 @@ export async function playIntro(o: { ascii: Ascii | null; video: HTMLVideoElemen
     .fromTo(corners, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'power2.out', stagger: 0.08, clearProps: 'transform' }, last + 0.9)
 
   if (import.meta.env.DEV) Object.assign(window, { __intro: { tl } })
-  await tl.then(() => {})
+  await new Promise<void>((r) => { tl.call(r, undefined, last + 1.2) })
 }

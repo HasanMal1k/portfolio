@@ -1,8 +1,5 @@
-import '@fontsource/instrument-serif/latin-400.css'
-import '@fontsource/instrument-serif/latin-400-italic.css'
-import '@fontsource/jetbrains-mono/latin-400.css'
-import '@fontsource/pinyon-script/latin-400.css'
-import '@fontsource/pixelify-sans/latin-400.css'
+import '@fontsource-variable/geist/index.css'
+import '@fontsource/jetbrains-mono/latin-400.css' // only for the glyphs drawn into the canvas
 import 'lenis/dist/lenis.css'
 import './site.css'
 import Lenis from 'lenis'
@@ -86,7 +83,7 @@ function onScroll() {
   ascii?.setDim(p)
   ascii?.setActive(p < 1) // covered: stop drawing and pause the clip; the skier lives in the hero only
   if (p >= 1) ascii?.retire() // and once he's been covered, he's had his turn: the hero comes back as warping ASCII
-  veil.style.opacity = (p * 0.7).toFixed(3)
+  veil.style.opacity = (p * 0.45).toFixed(3)
   if (!reduced) stage.style.transform = `translate3d(0, ${(-p * 8).toFixed(2)}%, 0) scale(${(1 - p * 0.06).toFixed(4)})`
 }
 addEventListener('scroll', onScroll, { passive: true })

@@ -4,7 +4,7 @@
 
 const RAMP = ' .·:-=+*o#%@'
 const RUN = { start: 1.0, end: 6.2 } // the clean run we play, once: open snow, skier in frame (after it he swings into trees)
-const RATE = 0.5 // half speed: about ten seconds of skiing
+const RATE = 0.65 // slowed, but not so far that the footage's own frame rate starts to stutter: about eight seconds
 const MONO = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
 
 const VERT = `#version 300 es
@@ -136,7 +136,9 @@ void main() {
 
   float g = texture(uAtlas, vec2((idx + cuv.x) / uGlyphs, cuv.y)).r * shown;
   vec3 ink = uInk * (0.28 + 0.72 * dens);
-  ink = mix(ink, uHot, max(red, ring * 0.45));
+  vec2 ld = cc - uPointer;
+  float lens = uPointerOn > 0.002 ? exp(-dot(ld, ld) / (uRadius * uRadius)) * uPointerOn : 0.0; // under the lens, glyphs warm to orange
+  ink = mix(ink, uHot, max(max(red, ring * 0.45), lens * 0.6));
   vec3 col = uBg + (ink - uBg) * g * uShade * max(wake, ring);
   outColor = vec4(col, 1.0);
 }`
@@ -331,10 +333,13 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   let resume = false
   let frameCb: ((f: number, t: number) => void) | null = null
   const TOTAL = Math.round((RUN.end - RUN.start) * 24)
-  // the run plays once; when it ends in view, the field fades in over it
+  // The run plays once. If it ends with the hero in full view, the field fades in over it; if the card is
+  // on its way up, the last frame holds until the card has covered it.
+  let held = false
   function checkEnd() {
     const over = video.ended || (!video.paused && video.currentTime >= RUN.end)
-    if (over && !genTarget) retire(false)
+    if (!over || genTarget) return
+    if (dim > 0.02) { held = true; video.pause() } else retire(false)
   }
 
   // ---------------------------------------------------------------- after the clip: random dismorphia
@@ -453,6 +458,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     springLens(dt)
 
     checkEnd()
+    if (held && !genTarget && dim <= 0.02) retire(false) // they stopped the card and came back up
 
     if (gen < 1 && video.readyState >= 2 && (fresh || (!rvfc && !video.paused))) {
       gl.activeTexture(gl.TEXTURE0)
