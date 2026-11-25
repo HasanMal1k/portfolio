@@ -13,12 +13,20 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preload" href="/media/skier.mp4" as="video" type="video/mp4" />
+    <!-- with scripts on, the entrance gate shows from the first paint -->
+    <script>document.documentElement.classList.add('js')</script>
   </head>
   <body>
     <a class="skip" href="#work">Skip to work</a>
 
     <!-- The skier clip, drawn as ASCII into the hero's canvas. Footage: "Skiing Down Slope" by Ella Wei, Pexels. -->
     <video class="src" src="/media/skier.mp4" muted loop playsinline preload="auto" aria-hidden="true"></video>
+
+    <!-- The way in. Clicking anywhere sends a ripple through the ASCII from that point and starts the clip. -->
+    <button class="gate" type="button" aria-label="Enter the site">
+      <span class="gate-ring" aria-hidden="true"><span>Enter</span></span>
+      <span class="gate-hint" aria-hidden="true">Click anywhere</span>
+    </button>
 
     <header class="top">
       <a class="mark" href="#top">HM©</a>
@@ -33,14 +41,13 @@
       <section class="hero" id="top" aria-labelledby="title">
         <div class="stage">
           <canvas class="ascii" aria-hidden="true"></canvas>
-          <!-- Three lines, three type voices: serif with script initials, pixel, serif with pixel icons.
-               main.ts splits the serif words into letters and scrambles the pixel word in, after the skier has had a head start. -->
+          <!-- Two lines, two type voices: serif with script initials, then pixel between pixel snowflakes.
+               intro.ts brings the words up one at a time once the skier has had his moment. -->
           <h1 id="title" class="headline">
-            <span class="sr">Hasan Malik, AI engineer building agentic systems</span>
+            <span class="sr">Hasan Malik, AI engineer</span>
             <span class="art" aria-hidden="true">
-              <span class="line l1"><span class="sc">H</span><span class="sf">asan</span> <span class="sc">M</span><span class="sf">alik</span></span>
-              <span class="line l2"><i class="ico" data-px="snow"></i><span class="px">AI Engineer</span><i class="ico" data-px="snow"></i></span>
-              <span class="line l3"><span class="sf">Agentic</span> <span class="sf it">systems</span><i class="ico" data-px="bot"></i><i class="ico" data-px="spark"></i></span>
+              <span class="line l1"><span class="w"><span class="sc">H</span>asan</span> <span class="w"><span class="sc">M</span>alik</span></span>
+              <span class="line l2"><i class="ico" data-px="snow"></i><span class="px"><span class="w">AI</span> <span class="w">Engineer</span></span><i class="ico" data-px="snow"></i></span>
             </span>
           </h1>
 

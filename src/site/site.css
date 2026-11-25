@@ -41,6 +41,38 @@ h1, h2, p { margin: 0; font-weight: 400; }
 /* ------------------------------------------------------------------ source video (only read by WebGL) */
 .src { position: fixed; left: 0; top: 0; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
 
+/* ------------------------------------------------------------------ the gate: press to enter */
+.gate { display: none; }
+.js .gate {
+  position: fixed; inset: 0; z-index: 30;
+  display: grid; place-content: center; justify-items: center; gap: 22px;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.7s var(--ease), visibility 0s 0.7s;
+}
+.gate:focus-visible { outline: none; }
+.gate:focus-visible .gate-ring { outline: 1px solid var(--hot); outline-offset: 8px; }
+.gate-ring {
+  position: relative; display: grid; place-items: center;
+  width: 128px; aspect-ratio: 1; border-radius: 50%;
+  border: 1px solid rgba(233, 229, 220, 0.5); background: rgba(14, 14, 13, 0.4);
+  font: 400 11px/1 var(--mono); letter-spacing: 0.22em; text-indent: 0.22em; text-transform: uppercase;
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease), border-color 0.5s var(--ease), transform 0.7s var(--ease);
+}
+/* a slow sonar ping, a hint of the ripple to come */
+.gate-ring::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid var(--ink);
+  opacity: 0; animation: ping 2.8s var(--ease) infinite 0.6s;
+}
+@keyframes ping { 0% { transform: scale(1); opacity: 0.45; } 100% { transform: scale(2.1); opacity: 0; } }
+.gate:hover .gate-ring { background: var(--ink); border-color: var(--ink); color: var(--bg); transform: scale(1.08); }
+.gate:active .gate-ring { transform: scale(0.96); transition-duration: 0.15s; }
+.gate-hint { font: 400 10px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.entered .gate { opacity: 0; visibility: hidden; pointer-events: none; }
+/* main.ts arms the gate; if it never does, the gate steps aside rather than trap the page */
+.js:not(.armed) .gate { animation: gate-bail 0s 8s forwards; }
+@keyframes gate-bail { to { opacity: 0; visibility: hidden; } }
+html.armed:not(.entered) { overflow: hidden; }
+
 /* ------------------------------------------------------------------ top */
 .top {
   position: fixed; top: 0; left: 0; right: 0; z-index: 5;
@@ -80,18 +112,17 @@ h1, h2, p { margin: 0; font-weight: 400; }
   pointer-events: none;
 }
 .veil { position: absolute; inset: 0; z-index: 3; background: var(--bg); opacity: 0; pointer-events: none; }
-/* ------------------------------------------------------------------ headline: three lines, three type voices */
+/* ------------------------------------------------------------------ headline: two lines, two type voices */
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .headline {
   position: relative; z-index: 2;
-  font: 400 clamp(36px, 8.6vw, 132px)/0.94 var(--serif);
+  font: 400 clamp(40px, 10.4vw, 168px)/0.98 var(--serif);
   letter-spacing: -0.01em; text-transform: uppercase; text-align: center;
 }
-/* a dark halo so the type reads over the glyphs (a text-shadow would be cut off by each letter's mask) */
+/* a dark halo so the type reads over the glyphs */
 .headline .art { display: grid; justify-items: center; filter: drop-shadow(0 0 18px rgba(14, 14, 13, 0.95)); }
 .headline .line { display: block; white-space: nowrap; }
-.headline .ch-mask { padding: 0.1em 0.04em 0.03em; margin: -0.1em -0.04em -0.03em; } /* room for serifs and the italic lean */
-.headline .ch { will-change: transform; }
+.headline .w { display: inline-block; } /* each word comes up on its own */
 
 /* swash initials in a script face; they lean into the next letter */
 .sc {
@@ -106,7 +137,6 @@ h1, h2, p { margin: 0; font-weight: 400; }
   font: 400 0.8em/1 'Pixelify Sans', var(--mono);
   letter-spacing: 0.01em;
 }
-.headline .it { font-style: italic; }
 
 /* pixel icons (src/site/pixel.ts), switching frames in steps like a little sprite */
 .ico { display: inline-block; line-height: 0; }
@@ -126,9 +156,11 @@ h1, h2, p { margin: 0; font-weight: 400; }
 @keyframes px-show { 0%, 100% { opacity: 0; } 92% { opacity: 1; } 96% { opacity: 0; } }
 @keyframes px-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
-/* nothing in the hero's front layer shows until main.ts plays the intro (or after 6s, if it never runs) */
-.headline .art, .side, .scroll-cue { visibility: hidden; animation: late-show 0s 6s forwards; }
-.intro .headline .art, .intro .side, .intro .scroll-cue { animation: none; }
+/* the hero's front layer waits for the intro (intro.ts); with no scripts it shows at once, and if the
+   script fails to arm the gate, it shows after 8s */
+.headline .art, .side, .scroll-cue, .top { visibility: hidden; }
+html:not(.armed) :is(.headline .art, .side, .scroll-cue, .top) { animation: late-show 0s 8s forwards; }
+html:not(.js) :is(.headline .art, .side, .scroll-cue, .top) { visibility: visible; animation: none; }
 @keyframes late-show { to { visibility: visible; } }
 
 .side {
@@ -231,7 +263,7 @@ a.row:hover::after { opacity: 0; }
   .side { bottom: 22px; }
   .scroll-cue { display: none; }
   .stage::before { inset: 20% 4%; }
-  .headline { font-size: clamp(30px, 10.2vw, 64px); }
+  .headline { font-size: clamp(34px, 12.4vw, 84px); }
   .sheet { border-radius: 20px 20px 0 0; }
   .row { grid-template-columns: 1fr auto; row-gap: 2px; padding-block: 12px; }
   .row > span:nth-child(2) { grid-column: 1; grid-row: 2; }
@@ -245,5 +277,5 @@ a.row:hover::after { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .label, .blurb, .hello, .mail, .row > span, .row::after { transition: none; transform: none; opacity: 1; }
   .row::after { transform: scaleX(1); }
-  .scroll-cue::after, .pxi path { animation: none; }
+  .scroll-cue::after, .pxi path, .gate-ring::after { animation: none; }
 }

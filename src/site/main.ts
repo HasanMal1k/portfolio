@@ -24,6 +24,7 @@ for (const a of $$<HTMLAnchorElement>('a[href^="#"]')) {
     const el = id === '#top' ? null : $<HTMLElement>(id)
     if (id !== '#top' && !el) return
     e.preventDefault()
+    if (!entered) enter(null, true) // the skip link goes straight past the gate
     if (lenis) lenis.scrollTo(el ?? 0, { duration: 1.4 })
     else if (el) el.scrollIntoView()
     else scrollTo(0, 0)
@@ -33,8 +34,40 @@ for (const a of $$<HTMLAnchorElement>('a[href^="#"]')) {
 // ------------------------------------------------------------------ the ASCII skier
 const ascii = startAscii(canvas, video)
 if (!ascii) document.documentElement.classList.add('no-gl')
-// the skier gets a head start, then the name comes up
-playIntro(ascii ? video : null, reduced)
+
+// ------------------------------------------------------------------ the way in
+// The page opens on a gate over a faint, frozen frame. Pressing it ripples the ASCII out from the
+// click, starts the clip, and the intro takes it from there.
+const html = document.documentElement
+const gate = $<HTMLButtonElement>('.gate')
+let entered = false
+function enter(at: { x: number; y: number } | null, instant = false) {
+  if (entered) return
+  entered = true
+  html.classList.add('entered')
+  lenis?.start()
+  ascii?.enter(at)
+  playIntro({ ascii, video, reduced, instant })
+}
+html.classList.add('armed')
+if (!gate || /^#(work|contact)$/.test(location.hash)) {
+  enter(null, true) // a link straight to a section skips the show
+} else {
+  history.scrollRestoration = 'manual'
+  scrollTo(0, 0)
+  lenis?.stop()
+  gate.addEventListener('click', (e) => {
+    // a keyboard press has no pointer position: ripple from the ring instead
+    const r = gate.querySelector('.gate-ring')!.getBoundingClientRect()
+    enter(e.detail ? { x: e.clientX, y: e.clientY } : { x: r.left + r.width / 2, y: r.top + r.height / 2 })
+  })
+  addEventListener('keydown', (e) => {
+    if (entered || (e.key !== 'Enter' && e.key !== ' ')) return
+    if (e.target instanceof HTMLAnchorElement) return // the skip link still works
+    e.preventDefault()
+    gate.click()
+  })
+}
 
 // ------------------------------------------------------------------ the hero stays put; the sheet rises over it
 const hero = $<HTMLElement>('.hero')!

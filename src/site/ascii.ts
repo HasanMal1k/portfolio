@@ -29,7 +29,11 @@ uniform float uPointerOn;
 uniform float uRadius;    // device px
 uniform float uTime;
 uniform float uReveal;
-uniform float uDim;
+uniform vec3  uRing;      // the entrance ripple: where the visitor clicked (device px) and how far it has run
+uniform float uRingW;     // device px between one swell and the next, roughly
+uniform float uRingAmp;   // 1 as it leaves the click, 0 once it has crossed the screen
+uniform float uIdle;      // how bright the picture is where the ripple hasn't reached yet
+uniform float uShade;     // overall brightness: the post-intro fade and the sheet covering the hero
 uniform vec3  uBg;
 uniform vec3  uInk;
 uniform vec3  uHot;
@@ -60,7 +64,18 @@ void main() {
   vec2 cellId = floor(frag / uCell);
   vec2 cuv = fract(frag / uCell);
   vec2 cc = (cellId + 0.5) * uCell;
+
+  // The entrance: rings of glyphs run out from the click and wake the picture behind them.
+  // ahead > 0: the wave hasn't got here yet; ahead < 0: it has passed, leaving smaller rings behind it.
+  vec2 rd = cc - uRing.xy;
+  float dist = max(length(rd), 1e-3);
+  float ahead = (dist - uRing.z) / uRingW;
+  float env = (ahead > 0.0 ? exp(-ahead * ahead * 2.0) : exp(ahead * 0.45)) * uRingAmp;
+  float ring = env * max(cos(ahead * 2.4), 0.0);
+  float wake = mix(uIdle, 1.0, smoothstep(0.6, -0.6, ahead));
+
   vec2 sp = warp(cc); // where this cell reads the picture from
+  sp += rd / dist * sin(ahead * 2.4) * env * uRingW * 0.8; // the water bends the picture as it passes
 
   // follow-cam: the skier's spot in the clip lands on the anchor, zoomed in
   vec2 uv = uFocus + uK * (sp / uRes - uAnchor) / uZoom;
@@ -76,6 +91,7 @@ void main() {
   float red = smoothstep(0.12, 0.3, c.r - max(c.g, c.b));
   dens = max(dens, red * 0.85) * inClip;
   red *= inClip;
+  dens = max(dens, ring * 0.9);
   float idx = floor(clamp(dens, 0.0, 0.999) * uGlyphs);
 
   // decode in, top-left to bottom-right, with a little noise
@@ -84,12 +100,16 @@ void main() {
 
   float g = texture(uAtlas, vec2((idx + cuv.x) / uGlyphs, cuv.y)).r * shown;
   vec3 ink = uInk * (0.28 + 0.72 * dens);
-  ink = mix(ink, uHot, red);
-  vec3 col = uBg + (ink - uBg) * g * (1.0 - uDim * 0.72);
+  ink = mix(ink, uHot, max(red, ring * 0.45));
+  vec3 col = uBg + (ink - uBg) * g * uShade * max(wake, ring);
   outColor = vec4(col, 1.0);
 }`
 
 export interface Ascii {
+  /** the visitor pressed Enter: ripple out from this point (client px; null for no ripple) and start the clip */
+  enter(at: { x: number; y: number } | null): void
+  /** 0..1: sink the skier back once he has had his moment, so the name can take over */
+  setFade(v: number): void
   setDim(v: number): void
   /** false once the hero is covered: stop drawing and pause the clip until it shows again */
   setActive(on: boolean): void
@@ -123,7 +143,8 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     video: U('uVideo'), atlas: U('uAtlas'), glyphs: U('uGlyphs'), res: U('uRes'), cell: U('uCell'),
     k: U('uK'), focus: U('uFocus'), anchor: U('uAnchor'), zoom: U('uZoom'),
     pointer: U('uPointer'), drag: U('uDrag'), pointerOn: U('uPointerOn'), radius: U('uRadius'), time: U('uTime'),
-    reveal: U('uReveal'), dim: U('uDim'), bg: U('uBg'), ink: U('uInk'), hot: U('uHot'),
+    reveal: U('uReveal'), shade: U('uShade'), bg: U('uBg'), ink: U('uInk'), hot: U('uHot'),
+    ring: U('uRing'), ringW: U('uRingW'), ringAmp: U('uRingAmp'), idle: U('uIdle'),
   }
   gl.uniform1i(u.video, 0)
   gl.uniform1i(u.atlas, 1)
@@ -131,6 +152,8 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   gl.uniform3fv(u.bg, hex(0x0e0e0d))
   gl.uniform3fv(u.ink, hex(0xe9e5dc))
   gl.uniform3fv(u.hot, hex(0xff4a26))
+  gl.uniform1f(u.idle, 0.2)
+  gl.uniform1f(u.ringW, 1) // never 0: the shader divides by it
 
   const tex = (unit: number, filter: number) => {
     const t = gl.createTexture()!
@@ -253,8 +276,10 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
 
   // ------------------------------------------------------------------ loop
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
-  let playing = !reduced
+  const RIPPLE = 1.9 // seconds for the entrance ripple to cross the screen
+  const ring = { x: 0, y: 0, t: -1 } // client px of the click; t: seconds since it (-1 waiting for one, Infinity done)
   let dim = 0
+  let fade = 0
   let reveal = reduced ? 1 : 0
   let pointerOn = 0
   let pointerTarget = 0
@@ -306,6 +331,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     last = now
     time += dt
     if (reveal < 1) { reveal = Math.min(1, reveal + dt / 1.4); dirty = true }
+    if (ring.t >= 0 && ring.t < RIPPLE) { ring.t += dt; dirty = true }
     const p = pointerOn
     pointerOn += (pointerTarget - pointerOn) * Math.min(1, dt * 4)
     if (Math.abs(p - pointerOn) > 0.001 || pointerOn > 0.01) dirty = true
@@ -334,11 +360,26 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     if (moved) dirty = true
     if (!dirty) return
     framing()
-    if (pointerOn > 0.002) {
-      // client px → canvas px (the hero scales as the sheet covers it, so measure the real box)
-      const r = canvas.getBoundingClientRect()
-      const sx = canvas.width / (r.width || 1)
-      const sy = canvas.height / (r.height || 1)
+    const rippling = ring.t >= 0 && ring.t < RIPPLE
+    // client px → canvas px (the hero scales as the sheet covers it, so measure the real box)
+    const r = pointerOn > 0.002 || rippling ? canvas.getBoundingClientRect() : null
+    const sx = r ? canvas.width / (r.width || 1) : 1
+    const sy = r ? canvas.height / (r.height || 1) : 1
+    if (r && rippling) {
+      const x = (ring.x - r.left) * sx
+      const y = (ring.y - r.top) * sy
+      const w = Math.min(canvas.width, canvas.height) * 0.045
+      // far enough to clear the farthest corner, wake and all; fast at first, easing out like a splash
+      const far = Math.max(Math.hypot(x, y), Math.hypot(canvas.width - x, y), Math.hypot(x, canvas.height - y), Math.hypot(canvas.width - x, canvas.height - y)) + w * 3
+      const k = Math.min(1, ring.t / RIPPLE)
+      gl.uniform3f(u.ring, x, y, far * (1 - (1 - k) ** 2))
+      gl.uniform1f(u.ringW, w)
+      gl.uniform1f(u.ringAmp, (1 - k) ** 1.3)
+    } else {
+      gl.uniform3f(u.ring, 0, 0, ring.t < 0 ? -1e5 : 1e6)
+      gl.uniform1f(u.ringAmp, 0)
+    }
+    if (r && pointerOn > 0.002) {
       const radius = Math.min(canvas.width, canvas.height) * 0.2
       let dx = (pointer.x - lens.x) * sx
       let dy = (pointer.y - lens.y) * sy
@@ -351,7 +392,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
     gl.uniform1f(u.pointerOn, pointerOn)
     gl.uniform1f(u.time, time)
     gl.uniform1f(u.reveal, reveal * 1.1)
-    gl.uniform1f(u.dim, dim)
+    gl.uniform1f(u.shade, (1 - dim * 0.72) * (1 - fade * 0.7))
     gl.drawArrays(gl.TRIANGLES, 0, 3)
     dirty = false
   }
@@ -359,7 +400,7 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   if (import.meta.env.DEV) {
     Object.assign(window, {
       __ascii: {
-        seen, focus, gl, prog, pointer, lens, state: () => ({ active, pointerOn, paused: video.paused }),
+        seen, focus, gl, prog, pointer, lens, ring, state: () => ({ active, pointerOn, fade, paused: video.paused }),
         step: (ms = 16) => { fresh = true; dirty = true; step(last + ms) },
       },
     })
@@ -370,14 +411,23 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
   drawAtlas()
   document.fonts.load(`400 16px "JetBrains Mono"`).finally(() => { drawAtlas(); dirty = true })
   video.addEventListener('loadeddata', () => { fresh = true })
+  video.addEventListener('seeked', () => { fresh = true }) // the still frame behind the gate
   const toStart = () => { if (video.currentTime < LOOP.start || video.currentTime >= LOOP.end) { video.currentTime = LOOP.start; snap = true } }
   video.addEventListener('timeupdate', toStart) // also loops when frames are throttled
   if (video.readyState >= 1) toStart()
   else video.addEventListener('loadedmetadata', toStart, { once: true })
-  if (playing) video.play().catch(() => { playing = false })
+  // the clip waits behind the gate as a faint still; enter() starts it
   requestAnimationFrame((t) => { last = t; frame(t) })
 
   return {
+    enter(at) {
+      if (ring.t !== -1) return
+      if (at && !reduced) Object.assign(ring, { x: at.x, y: at.y, t: 0 })
+      else ring.t = Infinity
+      if (!reduced) video.play().catch(() => {})
+      dirty = true
+    },
+    setFade(v) { if (Math.abs(v - fade) > 0.001) { fade = v; dirty = true } },
     setDim(v) { if (Math.abs(v - dim) > 0.001) { dim = v; dirty = true } },
     setActive(on) {
       if (on === active) return
@@ -391,7 +441,6 @@ export function startAscii(canvas: HTMLCanvasElement, video: HTMLVideoElement): 
       }
     },
     setPlaying(on) {
-      playing = on
       if (on) video.play().catch(() => {})
       else video.pause()
     },
