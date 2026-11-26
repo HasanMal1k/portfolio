@@ -178,19 +178,15 @@ html:not(.js) :is(.headline .art, .side, .scroll-cue, .top) { visibility: visibl
   position: relative; z-index: 1;
   background: var(--panel);
   border-radius: 28px 28px 0 0;
-  box-shadow: 0 -18px 48px -14px rgba(255, 74, 38, 0.16);
 }
-/* the top edge: a thin orange line with bright streaks flowing along it, thinning out round the corners.
+/* the top edge: a thin orange line with solid streaks flowing along it, thinning out round the corners.
    It's the border of a short strip filled with the card's own colour, so only the line shows. */
 .sheet::before {
   content: ''; position: absolute; inset: 0 0 auto; height: 40px; pointer-events: none;
   border-radius: inherit; border-top: 1.5px solid transparent;
   background:
     linear-gradient(var(--panel), var(--panel)) padding-box,
-    linear-gradient(90deg,
-      rgba(255, 74, 38, 0.22) 0%, rgba(255, 74, 38, 0.22) 18%,
-      #ff4a26 34%, #ffb07a 42%, #ff4a26 50%,
-      rgba(255, 74, 38, 0.22) 66%, rgba(255, 74, 38, 0.22) 100%) 0 0 / 50% 100% border-box;
+    linear-gradient(90deg, rgba(255, 74, 38, 0.25) 20%, var(--hot) 35% 50%, rgba(255, 74, 38, 0.25) 65%) 0 0 / 50% 100% border-box;
   animation: edge-flow 7s linear infinite;
 }
 @keyframes edge-flow { to { background-position: 0 0, 200% 0; } }
