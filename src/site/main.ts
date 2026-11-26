@@ -137,4 +137,4 @@ const io = new IntersectionObserver(
 )
 $$<HTMLElement>('.table .row').forEach((el, i) => el.style.setProperty('--i', String(i)))
 $$<HTMLElement>('.job').forEach((el, i) => el.style.setProperty('--i', String(i)))
-$$<HTMLElement>('.label, .job, .table .row, .blurb, .hello, .mail').forEach((el) => io.observe(el))
+$$<HTMLElement>('.label, .job, .table .row, .blurb, .hello, .mail, .elsewhere').forEach((el) => io.observe(el))

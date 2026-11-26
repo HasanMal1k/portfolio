@@ -168,8 +168,8 @@ html:not(.js) :is(.headline .art, .side, .scroll-cue, .top) { visibility: visibl
 @keyframes drip { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
 
 /* ------------------------------------------------------------------ reveal helper */
-.label, .blurb, .hello, .mail { opacity: 0; transform: translateY(18px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
-.label.in, .blurb.in, .hello.in, .mail.in { opacity: 1; transform: none; }
+.label, .blurb, .hello, .mail, .elsewhere { opacity: 0; transform: translateY(18px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+.label.in, .blurb.in, .hello.in, .mail.in, .elsewhere.in { opacity: 1; transform: none; }
 
 /* ------------------------------------------------------------------ the sheet that rises over the hero */
 .sheet {
@@ -271,6 +271,14 @@ a.row:hover::after { opacity: 0; }
 .hello span { background: linear-gradient(var(--hot), var(--hot)) 0 100% / 0 2px no-repeat; transition: background-size 0.7s var(--ease); padding-bottom: 0.04em; }
 .hello:hover span { background-size: 100% 2px; }
 .mail { font: 400 12px/1 var(--sans); letter-spacing: 0.06em; color: var(--muted); }
+.elsewhere { display: flex; gap: 22px; font: 400 11px/1 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; }
+.elsewhere a { position: relative; padding: 8px 0; color: var(--ink-2); transition: color 0.4s var(--ease); }
+.elsewhere a::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 4px; height: 1px; background: var(--hot);
+  transform: scaleX(0); transform-origin: right; transition: transform 0.5s var(--ease);
+}
+.elsewhere a:hover { color: var(--ink); }
+.elsewhere a:hover::after { transform: scaleX(1); transform-origin: left; }
 
 .foot {
   display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
@@ -299,7 +307,7 @@ a.row:hover::after { opacity: 0; }
 .no-gl .ascii { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .label, .blurb, .hello, .mail, .row > span, .row::after, .job > *, .job::after { transition: none; transform: none; opacity: 1; }
+  .label, .blurb, .hello, .mail, .elsewhere, .row > span, .row::after, .job > *, .job::after { transition: none; transform: none; opacity: 1; }
   .row::after, .job::after { transform: scaleX(1); }
   .scroll-cue::after, .pxi path, .gate-hint, .sheet::before { animation: none; }
 }
