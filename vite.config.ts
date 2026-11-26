@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
 import { resolve } from 'node:path'
-import { VARIANTS, render, type VariantName } from './src/site/content'
+import { VARIANTS, render, type VariantName } from './src/site/content.ts'
 
 // The home page comes in two versions from one template: "ai" (the default) and "swe" (software: backend,
 // DevOps and AI). Pick with --mode swe (npm run dev:swe / build:swe) or VARIANT=swe, as the Vercel project does.
@@ -27,8 +27,8 @@ export default defineConfig(({ mode }) => ({
     target: 'es2022',
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        field: resolve(__dirname, 'field.html'), // the toy-animal world, kept as its own page
+        main: resolve(import.meta.dirname, 'index.html'),
+        field: resolve(import.meta.dirname, 'field.html'), // the toy-animal world, kept as its own page
       },
     },
   },
