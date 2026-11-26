@@ -4,8 +4,20 @@
     {
       "name": "portfolio-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "portfolio-dev-swe",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:swe"
+      ],
+      "port": 5174
     }
   ]
 }

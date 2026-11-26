@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:swe": "vite --mode swe --port 5174",
     "build": "tsc --noEmit && vite build",
+    "build:swe": "tsc --noEmit && vite build --mode swe",
     "preview": "vite preview"
   },
   "devDependencies": {

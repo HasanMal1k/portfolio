@@ -1,15 +1,16 @@
 <!doctype html>
 <html lang="en">
+  <!-- A template: vite.config.ts fills the double-brace fields from src/site/content.ts, for the AI or the software version. -->
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Hasan Malik — Software &amp; AI Engineer</title>
-    <meta name="description" content="Hasan Malik is a software and AI engineer building LLM systems: multi-agent coding workflows, retrieval, and the Python and Go backends under them." />
+    <title>{{pageTitle}}</title>
+    <meta name="description" content="{{description}}" />
     <meta name="theme-color" content="#0e0e0d" />
     <meta name="color-scheme" content="dark" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Hasan Malik — Software &amp; AI Engineer" />
-    <meta property="og:description" content="Software and AI engineer building LLM systems." />
+    <meta property="og:title" content="{{pageTitle}}" />
+    <meta property="og:description" content="{{ogDescription}}" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preload" href="/media/skier.mp4" as="video" type="video/mp4" />
@@ -43,10 +44,10 @@
           <canvas class="ascii" aria-hidden="true"></canvas>
           <!-- Two lines in one sans; intro.ts brings the words up one at a time once the skier has had his moment. -->
           <h1 id="title" class="headline">
-            <span class="sr">Hasan Malik, software and AI engineer</span>
+            <span class="sr">{{spoken}}</span>
             <span class="art" aria-hidden="true">
               <span class="line l1"><span class="w">Hasan</span> <span class="w">Malik</span></span>
-              <span class="line l2"><i class="ico" data-px="snow"></i><span class="px"><span class="w">Software</span> <span class="w">&amp; AI</span> <span class="w">Engineer</span></span><i class="ico" data-px="snow"></i></span>
+              <span class="line l2"><i class="ico" data-px="snow"></i><span class="px">{{titleWords}}</span><i class="ico" data-px="snow"></i></span>
             </span>
           </h1>
 
@@ -63,26 +64,9 @@
         <!-- The card that rises over the hero once the skier's run is over. -->
         <section class="exp" id="experience" aria-labelledby="exp-title">
           <h2 id="exp-title" class="label">Experience</h2>
-          <!-- newest first, one <li> each -->
+          <!-- filled from src/site/content.ts -->
           <ol class="jobs">
-            <li class="job">
-              <span class="when">2026 — Now</span>
-              <h3 class="role">Forward Deployed Engineer</h3>
-              <span class="org">Zixel</span>
-              <p class="what">C++ modeling features for a cloud CAD platform, including sheet-metal tools like Custom Forming and Bridge Stamping. Co-leading a team of five on a feature redesign.</p>
-            </li>
-            <li class="job">
-              <span class="when">2025</span>
-              <h3 class="role">Fullstack Developer</h3>
-              <span class="org">Triple Seven Motorsports</span>
-              <p class="what">Rebuilt their 3D steering wheel configurator in Next.js and Three.js, wired to Shopify for products, inventory and configurable options.</p>
-            </li>
-            <li class="job">
-              <span class="when">2022 — 2026</span>
-              <h3 class="role">BS Data Science</h3>
-              <span class="org">COMSATS University · Islamabad</span>
-              <p class="what">Final-year project: MLOPT, an AutoML platform that takes a dataset from upload and cleaning through model comparison to an Azure ML deployment.</p>
-            </li>
+{{jobs}}
           </ol>
         </section>
 
@@ -95,46 +79,10 @@
               <span role="columnheader">Stack</span>
               <span role="columnheader">Year</span>
             </div>
-            <a class="row" role="row" href="https://github.com/HasanMal1k/coder" target="_blank" rel="noopener">
-              <span role="cell">Coder</span>
-              <span role="cell">Multi-agent dev platform</span>
-              <span role="cell">Go · Next.js · Docker · MCP</span>
-              <span role="cell">2026</span>
-            </a>
-            <a class="row" role="row" href="https://github.com/HasanMal1k/legalai" target="_blank" rel="noopener">
-              <span role="cell">Pakistan Law Assistant</span>
-              <span role="cell">Legal RAG</span>
-              <span role="cell">Python · FastAPI · Qdrant · Ollama</span>
-              <span role="cell">2026</span>
-            </a>
-            <a class="row" role="row" href="https://github.com/HasanMal1k/MLOPT" target="_blank" rel="noopener">
-              <span role="cell">MLOPT</span>
-              <span role="cell">AutoML platform</span>
-              <span role="cell">Next.js · FastAPI · Azure ML</span>
-              <span role="cell">2026</span>
-            </a>
-            <a class="row" role="row" href="https://github.com/HasanMal1k/Steering-Wheel" target="_blank" rel="noopener">
-              <span role="cell">Steering Wheel Configurator</span>
-              <span role="cell">3D configurator</span>
-              <span role="cell">Next.js · Three.js · Shopify</span>
-              <span role="cell">2025</span>
-            </a>
-            <a class="row" role="row" href="https://sizer-five.vercel.app" target="_blank" rel="noopener">
-              <span role="cell">Sizer</span>
-              <span role="cell">Web app</span>
-              <span role="cell">Next.js · TypeScript</span>
-              <span role="cell">2026</span>
-            </a>
-            <a class="row" role="row" href="/field.html">
-              <span role="cell">The Field</span>
-              <span role="cell">Interactive 3D</span>
-              <span role="cell">three.js · WebGL</span>
-              <span role="cell">2026</span>
-            </a>
+{{work}}
           </div>
           <p class="blurb">
-            I'm a software and AI engineer. I build LLM systems: multi-agent coding workflows, retrieval, and the
-            Python and Go backends under them. As a forward deployed engineer, I write C++ for a cloud CAD platform.
+            {{bio}}
           </p>
         </section>
 
