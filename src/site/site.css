@@ -114,6 +114,8 @@ html.armed:not(.entered) { overflow: hidden; }
 /* a dark halo so the type reads over the glyphs */
 .headline .art { display: grid; justify-items: center; filter: drop-shadow(0 0 18px rgba(14, 14, 13, 0.95)); }
 .headline .line { display: block; white-space: nowrap; }
+/* the name leads; the title sits under it, smaller, so "Software & AI Engineer" fits on one line */
+.headline .l2 { font-size: 0.5em; letter-spacing: -0.03em; margin-top: 0.22em; }
 .headline .w { display: inline-block; } /* each word comes up on its own */
 
 /* hovering "AI Engineer" scrambles it (intro.ts) and warms it */
